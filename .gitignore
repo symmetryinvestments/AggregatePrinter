@@ -1,0 +1,15 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/aggregateprinter
+aggregateprinter.so
+aggregateprinter.dylib
+aggregateprinter.dll
+aggregateprinter.a
+aggregateprinter.lib
+aggregateprinter-test-*
+*.exe
+*.o
+*.obj
+*.lst

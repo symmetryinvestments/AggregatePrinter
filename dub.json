@@ -1,0 +1,10 @@
+{
+	"authors": [
+		"Robert burner Schadek"
+	],
+	"copyright": "Copyright © 2020, Symmetry Investments LP",
+	"description": "Prints aggregates with some nicer layouts",
+	"license": "LGPL3",
+	"dflags" : ["-vcg-ast"],
+	"name": "aggregateprinter"
+}
