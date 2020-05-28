@@ -40,21 +40,23 @@ private template AllFieldNames(T) {
 }
 
 private void printerImpl(Out,T)(ref Out o, T t) {
-	import std.traits : isArray, isSomeString;
+	import std.traits : isArray, isSomeString, Unqual;
 	import graphql : GQLDCustomLeaf;
 	import nullablestore : NullableStore;
 	import std.datetime : SysTime, Date, DateTime, TimeOfDay;
 	import core.time : Duration;
 
-	static if(is(T == Nullable!Fs, Fs...)) {
+	alias UT = Unqual!T;
+
+	static if(is(UT == Nullable!Fs, Fs...)) {
 		if(t.isNull()) {
 			o("null");
 		} else {
 			printerImpl(o, t.get());
 		}
-	} else static if(is(T : GQLDCustomLeaf!K, K...)) {
+	} else static if(is(UT : GQLDCustomLeaf!K, K...)) {
 		printerImpl(o, t.value);
-	} else static if(is(T : NullableStore!G, G)) {
+	} else static if(is(UT : NullableStore!G, G)) {
 		o(T.stringof);
  		// NullableStore stores no data
 	} else static if(isSomeString!T) {
@@ -69,11 +71,11 @@ private void printerImpl(Out,T)(ref Out o, T t) {
 		}
 		o("]");
 	
-	} else static if(is(T == DateTime) || is(T == TimeOfDay) || is(T == Date)
-			|| is(T == SysTime))
+	} else static if(is(UT : DateTime) || is(UT : TimeOfDay) || is(UT : Date)
+			|| is(UT : SysTime))
 	{
 		o(t.toISOExtString());
-	} else static if(is(T == Duration)) {
+	} else static if(is(UT == Duration)) {
 		o(t.toString());
 	} else static if(is(T == struct) || is(T == class)) {
 		enum mems = AllFieldNames!T;
@@ -239,6 +241,13 @@ unittest {
 	string s = format("%s", aggPrinter(b));
 	string exp = 
 	`Bar(foo: Foo(a: 0, b: nan, dt: 0001-01-01T00:00:00, d: 0001-01-01, tod: 00:00:00), foo2: null, c: "", dur: 0 hnsecs, tdur: TickDuration(length: 0), foos: [])`
+	;
+	assert(s == exp, s);
+
+	const(Bar) c;
+	s = format("%s", aggPrinter(c));
+	exp = 
+	`const(Bar)(foo: const(Foo)(a: 0, b: nan, dt: 0001-01-01T00:00:00, d: 0001-01-01, tod: 00:00:00), foo2: null, c: "", dur: 0 hnsecs, tdur: const(TickDuration)(length: 0), foos: [])`
 	;
 	assert(s == exp, s);
 }
