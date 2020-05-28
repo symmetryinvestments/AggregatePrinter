@@ -40,7 +40,7 @@ private template AllFieldNames(T) {
 }
 
 private void printerImpl(Out,T)(ref Out o, T t) {
-	import std.traits : isSomeString;
+	import std.traits : isArray, isSomeString;
 	import graphql : GQLDCustomLeaf;
 	import nullablestore : NullableStore;
 	import std.datetime : SysTime, Date, DateTime, TimeOfDay;
@@ -61,6 +61,14 @@ private void printerImpl(Out,T)(ref Out o, T t) {
 		o("\"");
 		o(to!string(t));
 		o("\"");
+	} else static if(isArray!T) {
+		o("[");
+		foreach(i; 0 .. t.length) {
+			o(i > 0 ? ", " : " ");
+			printerImpl(o, t[i]);
+		}
+		o("]");
+	
 	} else static if(is(T == DateTime) || is(T == TimeOfDay) || is(T == Date)
 			|| is(T == SysTime))
 	{
@@ -224,12 +232,13 @@ unittest {
 		string c;
 		Duration dur;
 		TickDuration tdur;
+		Foo[] foos;
 	}
 
 	Bar b;
 	string s = format("%s", aggPrinter(b));
 	string exp = 
-	`Bar(foo: Foo(a: 0, b: nan, dt: 0001-01-01T00:00:00, d: 0001-01-01, tod: 00:00:00), foo2: null, c: "", dur: 0 hnsecs, tdur: TickDuration(length: 0))`
+	`Bar(foo: Foo(a: 0, b: nan, dt: 0001-01-01T00:00:00, d: 0001-01-01, tod: 00:00:00), foo2: null, c: "", dur: 0 hnsecs, tdur: TickDuration(length: 0), foos: [])`
 	;
 	assert(s == exp, s);
 }
