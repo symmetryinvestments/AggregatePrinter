@@ -10,6 +10,18 @@ AggregatePrinter!T aggPrinter(T)(auto ref T t) {
 	return AggregatePrinter!T(&t);
 }
 
+struct AggregatePrinter(T) {
+	T* thing;
+
+	this(T* thing) {
+		this.thing = thing;
+	}
+
+	void toString(void delegate(const(char)[]) @safe output ) {
+		printerImpl(output, *(this.thing));
+	}
+}
+
 private template ClassFieldsImpl(T) {
 	enum ClassFieldsImpl = FieldNameTuple!(T);
 }
@@ -19,35 +31,11 @@ private template ClassFields(T) {
 		~ [ClassFieldsImpl!T];
 }
 
-struct AggregatePrinter(T) {
-	import std.meta : staticMap;
+private template AllFieldNames(T) {
 	static if(is(T == class)) {
-		enum mems = ClassFields!T;
+		enum AllFieldNames = ClassFields!T;
 	} else {
-		enum mems = FieldNameTuple!T;
-	}
-	T* thing;
-
-	this(T* thing) {
-		this.thing = thing;
-	}
-
-	void toString(void delegate(const(char)[]) @safe output ) {
-		output(T.stringof);
-		output("(");
-		static if(mems.length > 0) {
-			output(mems[0]);
-			output(": ");
-			enum mOne = mems[0];
-			printerImpl(output, __traits(getMember, *this.thing, mOne));
-			static foreach(mem; mems[1 .. $]) {
-				output(", ");
-				output(mem);
-				output(": ");
-				printerImpl(output, __traits(getMember, *this.thing, mem));
-			}
-		}
-		output(")");
+		enum AllFieldNames = FieldNameTuple!T;
 	}
 }
 
@@ -59,7 +47,7 @@ private void printerImpl(Out,T)(ref Out o, T t) {
 		if(t.isNull()) {
 			o("null");
 		} else {
-			o(to!string(t.get()));
+			printerImpl(o, t.get());
 		}
 	} else static if(is(T : GQLDCustomLeaf!K, K...)) {
 		printerImpl(o, t.value);
@@ -70,6 +58,23 @@ private void printerImpl(Out,T)(ref Out o, T t) {
 		o("\"");
 		o(to!string(t));
 		o("\"");
+	} else static if(is(T == struct) || is(T == class)) {
+		enum mems = AllFieldNames!T;
+		o(T.stringof);
+		o("(");
+		static if(mems.length > 0) {
+			o(mems[0]);
+			o(": ");
+			enum mOne = mems[0];
+			printerImpl(o, __traits(getMember, t, mOne));
+			static foreach(mem; mems[1 .. $]) {
+				o(", ");
+				o(mem);
+				o(": ");
+				printerImpl(o, __traits(getMember, t, mem));
+			}
+		}
+		o(")");
 	} else {
 		o(to!string(t));
 	}
@@ -191,4 +196,23 @@ unittest {
 	s = format("%s", aggPrinter(f2));
 	exp = "Foo(a: 1338, b: 37, c: 0, d: NullableStore!(int[]))";
 	assert(s == exp, format("\next: %s\ngot: %s", exp, s));
+}
+
+unittest {
+	import std.stdio;
+	static struct Foo {
+		int a;
+		float b;
+	}
+
+	static struct Bar {
+		Foo foo;
+		Nullable!Foo foo2;
+		string c;
+	}
+
+	Bar b;
+	string s = format("%s", aggPrinter(b));
+	string exp = `Bar(foo: Foo(a: 0, b: nan), foo2: null, c: "")`;
+	assert(s == exp, s);
 }
