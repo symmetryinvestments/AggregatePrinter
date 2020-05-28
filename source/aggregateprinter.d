@@ -43,6 +43,9 @@ private void printerImpl(Out,T)(ref Out o, T t) {
 	import std.traits : isSomeString;
 	import graphql : GQLDCustomLeaf;
 	import nullablestore : NullableStore;
+	import std.datetime : SysTime, Date, DateTime, TimeOfDay;
+	import core.time : Duration;
+
 	static if(is(T == Nullable!Fs, Fs...)) {
 		if(t.isNull()) {
 			o("null");
@@ -58,6 +61,12 @@ private void printerImpl(Out,T)(ref Out o, T t) {
 		o("\"");
 		o(to!string(t));
 		o("\"");
+	} else static if(is(T == DateTime) || is(T == TimeOfDay) || is(T == Date)
+			|| is(T == SysTime))
+	{
+		o(t.toISOExtString());
+	} else static if(is(T == Duration)) {
+		o(t.toString());
 	} else static if(is(T == struct) || is(T == class)) {
 		enum mems = AllFieldNames!T;
 		o(T.stringof);
@@ -200,19 +209,27 @@ unittest {
 
 unittest {
 	import std.stdio;
+	import std.datetime;
 	static struct Foo {
 		int a;
 		float b;
+		DateTime dt;
+		Date d;
+		TimeOfDay tod;
 	}
 
 	static struct Bar {
 		Foo foo;
 		Nullable!Foo foo2;
 		string c;
+		Duration dur;
+		TickDuration tdur;
 	}
 
 	Bar b;
 	string s = format("%s", aggPrinter(b));
-	string exp = `Bar(foo: Foo(a: 0, b: nan), foo2: null, c: "")`;
+	string exp = 
+	`Bar(foo: Foo(a: 0, b: nan, dt: 0001-01-01T00:00:00, d: 0001-01-01, tod: 00:00:00), foo2: null, c: "", dur: 0 hnsecs, tdur: TickDuration(length: 0))`
+	;
 	assert(s == exp, s);
 }
