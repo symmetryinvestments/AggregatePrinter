@@ -4,7 +4,7 @@
 	],
 	"copyright": "Copyright © 2020, Symmetry Investments LP",
 	"dependencies": {
-		"graphqld": "=>3.0.0",
+		"graphqld": ">=3.0.0",
 		"nullablestore": "~>2.1.0"
 	},
 	"description": "Prints aggregates with some nicer layouts",
