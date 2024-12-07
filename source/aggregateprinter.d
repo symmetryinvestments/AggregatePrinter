@@ -1,10 +1,19 @@
 module aggregateprinter;
 
+import core.time : Duration;
 import std.conv : to;
-import std.traits : FieldNameTuple, BaseClassesTuple;
-import std.typecons : Nullable, nullable;
-import std.meta : staticMap;
+import std.datetime;
 import std.format;
+import std.meta : staticMap;
+import std.stdio;
+import std.traits : FieldNameTuple, BaseClassesTuple, isArray, isSomeString, Unqual;
+import std.typecons : Nullable, nullable;
+
+import nullablestore;
+
+version(graphqld) {
+	import graphql.uda : GQLDCustomLeaf;
+}
 
 AggregatePrinter!T aggPrinter(T)(auto ref T t) {
 	return AggregatePrinter!T(&t);
@@ -40,12 +49,6 @@ private template AllFieldNames(T) {
 }
 
 private void printerImpl(Out,T)(ref Out o, T t) {
-	import std.traits : isArray, isSomeString, Unqual;
-	import graphql : GQLDCustomLeaf;
-	import nullablestore : NullableStore;
-	import std.datetime : SysTime, Date, DateTime, TimeOfDay;
-	import core.time : Duration;
-
 	alias UT = Unqual!T;
 
 	static if(is(UT == Nullable!Fs, Fs...)) {
@@ -100,8 +103,6 @@ private void printerImpl(Out,T)(ref Out o, T t) {
 }
 
 unittest {
-	import std.typecons : Nullable;
-
 	struct Foo {
 		int a;
 		string b;
@@ -115,9 +116,6 @@ unittest {
 }
 
 unittest {
-	import std.typecons : Nullable;
-	import std.format;
-
 	class Bar {
 		int a;
 		string b;
@@ -137,9 +135,6 @@ unittest {
 }
 
 unittest {
-	import std.typecons : Nullable;
-	import std.format;
-
 	class Cls {
 		int a;
 		string b;
@@ -169,8 +164,6 @@ unittest {
 }
 
 unittest {
-	import std.typecons : Nullable;
-
 	struct Foo {
 		Nullable!int a;
 	}
@@ -180,46 +173,42 @@ unittest {
 	string s = format("%s", aggPrinter(f));
 	assert(s == "Foo(a: 1337)", s);
 }
-unittest {
-	import std.typecons : Nullable;
-	import graphql.uda : GQLDCustomLeaf;
-	import nullablestore;
+version(graphqld) {
+	unittest {
+		int toInt(string s) {
+			return to!int(s);
+		}
 
-	int toInt(string s) {
-		return to!int(s);
+		string fromInt(int i) {
+			return to!string(i);
+		}
+
+		alias QInt = GQLDCustomLeaf!(int, fromInt, toInt);
+		alias QNInt = GQLDCustomLeaf!(Nullable!int, fromInt, toInt);
+
+		struct Foo {
+			Nullable!int a;
+			QNInt b;
+			QInt c;
+			NullableStore!(int[]) d;
+		}
+
+		Foo f;
+		f.a = 1337;
+		string s = format("%s", aggPrinter(f));
+		string exp = "Foo(a: 1337, b: null, c: 0, d: NullableStore!(int[]))";
+		assert(s == exp, format("\next: %s\ngot: %s", exp, s));
+
+		Foo f2;
+		f2.a = 1338;
+		f2.b.value = nullable(37);
+		s = format("%s", aggPrinter(f2));
+		exp = "Foo(a: 1338, b: 37, c: 0, d: NullableStore!(int[]))";
+		assert(s == exp, format("\next: %s\ngot: %s", exp, s));
 	}
-
-	string fromInt(int i) {
-		return to!string(i);
-	}
-
-	alias QInt = GQLDCustomLeaf!(int, fromInt, toInt);
-	alias QNInt = GQLDCustomLeaf!(Nullable!int, fromInt, toInt);
-
-	struct Foo {
-		Nullable!int a;
-		QNInt b;
-		QInt c;
-		NullableStore!(int[]) d;
-	}
-
-	Foo f;
-	f.a = 1337;
-	string s = format("%s", aggPrinter(f));
-	string exp = "Foo(a: 1337, b: null, c: 0, d: NullableStore!(int[]))";
-	assert(s == exp, format("\next: %s\ngot: %s", exp, s));
-
-	Foo f2;
-	f2.a = 1338;
-	f2.b.value = nullable(37);
-	s = format("%s", aggPrinter(f2));
-	exp = "Foo(a: 1338, b: 37, c: 0, d: NullableStore!(int[]))";
-	assert(s == exp, format("\next: %s\ngot: %s", exp, s));
 }
 
 unittest {
-	import std.stdio;
-	import std.datetime;
 	static struct Foo {
 		int a;
 		float b;
@@ -233,21 +222,21 @@ unittest {
 		Nullable!Foo foo2;
 		string c;
 		Duration dur;
-		TickDuration tdur;
+		MonoTime tdur;
 		Foo[] foos;
 	}
 
 	Bar b;
 	string s = format("%s", aggPrinter(b));
 	string exp = 
-	`Bar(foo: Foo(a: 0, b: nan, dt: 0001-01-01T00:00:00, d: 0001-01-01, tod: 00:00:00), foo2: null, c: "", dur: 0 hnsecs, tdur: TickDuration(length: 0), foos: [])`
+	`Bar(foo: Foo(a: 0, b: nan, dt: 0001-01-01T00:00:00, d: 0001-01-01, tod: 00:00:00), foo2: null, c: "", dur: 0 hnsecs, tdur: MonoTimeImpl!ClockType.normal(_ticks: 0), foos: [])`
 	;
 	assert(s == exp, s);
 
 	const(Bar) c;
 	s = format("%s", aggPrinter(c));
 	exp = 
-	`const(Bar)(foo: const(Foo)(a: 0, b: nan, dt: 0001-01-01T00:00:00, d: 0001-01-01, tod: 00:00:00), foo2: null, c: "", dur: 0 hnsecs, tdur: const(TickDuration)(length: 0), foos: [])`
+	`const(Bar)(foo: const(Foo)(a: 0, b: nan, dt: 0001-01-01T00:00:00, d: 0001-01-01, tod: 00:00:00), foo2: null, c: "", dur: 0 hnsecs, tdur: const(MonoTimeImpl!ClockType.normal)(_ticks: 0), foos: [])`
 	;
 	assert(s == exp, s);
 }
