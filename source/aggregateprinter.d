@@ -49,6 +49,11 @@ private template AllFieldNames(T) {
 }
 
 private void printerImpl(Out,T)(ref Out o, T t) {
+	version(graphqld) {
+		enum bool hasGraphqld = true;
+	} else {
+		enum bool hasGraphqld = false;
+	}
 	alias UT = Unqual!T;
 
 	static if(is(UT == Nullable!Fs, Fs...)) {
@@ -57,7 +62,7 @@ private void printerImpl(Out,T)(ref Out o, T t) {
 		} else {
 			printerImpl(o, t.get());
 		}
-	} else static if(is(UT : GQLDCustomLeaf!K, K...)) {
+	} else static if(hasGraphqld && is(UT : GQLDCustomLeaf!K, K...)) {
 		printerImpl(o, t.value);
 	} else static if(is(UT : NullableStore!G, G)) {
 		o(T.stringof);

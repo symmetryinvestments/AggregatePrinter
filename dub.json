@@ -6,14 +6,15 @@
 	"dependencies": {
 		"nullablestore": "~>2.1.0"
 	},
-	"configurations": [
-		{ "name": "graphqld"
-		, "versions": ["graphqld"]
-		, "dependencies": {
-			"graphqld": ">=3.0.0"
+	"configurations": 
+		[ { "name": "library" }
+		, { "name": "graphqld"
+		  , "versions": ["graphqld"]
+		  , "dependencies": {
+		  	  "graphqld": ">=3.0.0"
+		    }
 		  }
-		}
-	],
+		],
 	"description": "Prints aggregates with some nicer layouts",
 	"license": "LGPL3",
 	"name": "aggregateprinter"
